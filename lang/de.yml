@@ -66,6 +66,3 @@ de:
     PLURALNAME: "Einstellungen"
     CONTEXTFORAI: "Kontext für KI"
     CONTEXTFORAI_RIGHTTITLE: "Dieser Text wird verwendet, um der KI Kontext zu geben und bessere Übersetzungen zu ermöglichen. Gib eine kurze Beschreibung deines Unternehmens sowie der angebotenen Produkte und Dienstleistungen."
-  S2Hub\TextAssistant\Models\TextAssistantSettings:
-    SINGULARNAME: 'Einstellungen'
-    PLURALNAME: 'Einstellungen'

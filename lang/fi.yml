@@ -95,11 +95,8 @@ fi:
     STEP_11: "Valmiit käännökset eivät julkaise automaattisesti, vaan ne lisätään \"Käännökset\"-listaan. Siellä voit tarkastella, muuttaa tarvittaessa ja lopulta julkaista ne.<br/><br/>Tämä on oppaan viimeinen vaihe ja kun painat \"Sulje\", opas päättyy ja voit jatkaa admin-työkalun käyttöä normaalisti."
     NEXT: "Seuraava"
     DONE: "Sulje"
-  S2Hub\TextAssistant\Models\OpenAIModuleSettings:
+  S2Hub\TextAssistant\Models\TextAssistantSettings:
     SINGULARNAME: "Asetus"
     PLURALNAME: "Asetukset"
     CONTEXTFORAI: "Kontekstitieto tekoälylle"
     CONTEXTFORAI_RIGHTTITLE: "Tätä tekstiä käytetään antamaan tekoälylle konteksti, jotta se voi tuottaa parempia käännöksiä. Kirjoita lyhyt kuvaus yrityksestäsi sekä tarjoamistasi tuotteista ja palveluista."
-  S2Hub\TextAssistant\Models\TextAssistantSettings:
-    SINGULARNAME: 'Asetukset'
-    PLURALNAME: 'Asetukset'

@@ -100,6 +100,3 @@ sv:
     PLURALNAME: "Inställningar"
     CONTEXTFORAI: "Hjälp kontext till AI"
     CONTEXTFORAI_RIGHTTITLE: "Den här texten används för att ge AI:n kontext och hjälpa den skapa bättre översättningar. Skriv en kort beskrivning av ditt företag och vilka produkter och tjänster ni erbjuder."
-  S2Hub\TextAssistant\Models\TextAssistantSettings:
-    SINGULARNAME: 'Inställningar'
-    PLURALNAME: 'Inställningar'
