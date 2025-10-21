@@ -109,11 +109,24 @@ document.addEventListener('click', function(e) {
                 $('.cms-content').first().removeClass('loading');
                 throw new Error('HTTP error, status = ' + response.status);
             }
+            if (response.headers.has('x-close')) {
+                console.log('x-close');
+                let dialog = e.target.closest('.text-assistant-dialog');
+                dialog.querySelector('.dialog-form').innerHTML = '';
+                dialog.textAssistantDialog.hide();
+            }
+            if (response.headers.has('x-redirect')) {
+                console.log('x-redirect: ' + response.headers.get('x-redirect'));
+                window.location.href = response.headers.get('x-redirect');
+                return;
+            }
             return response.text();
         }).then(function(data) {
-            let dialog = e.target.closest('.text-assistant-dialog');
-            dialog.querySelector('.dialog-form').innerHTML = data;
-            $('.cms-content').first().removeClass('loading');
+            if (data) {
+                $('.cms-content').first().removeClass('loading');
+                let dialog = e.target.closest('.text-assistant-dialog');
+                dialog.querySelector('.dialog-form').innerHTML = data;
+            }
         });
         e.preventDefault();
         e.stopPropagation();
