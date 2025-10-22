@@ -6,9 +6,9 @@ use Colymba\BulkManager\BulkAction\Handler;
 use Colymba\BulkTools\HTTPBulkToolsResponse;
 use S2Hub\TextAssistant\Models\TranslationAction;
 use SilverStripe\Control\HTTPRequest;
+use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\Versioned\Versioned;
-use SilverStripe\ORM\DataList;
 use TractorCow\Fluent\Extension\FluentExtension;
 use TractorCow\Fluent\State\FluentState;
 
@@ -36,7 +36,7 @@ class TranslationActionContainerObjectPublishHandler extends Handler
     public function publish(HTTPRequest $request)
     {
         TranslationAction::config()->set('allow_logging', false);
-        $response = new HTTPBulkToolsResponse(false, $this->gridField);
+        $response = new HTTPBulkToolsResponse(true, $this->gridField);
         $records = $this->getRecords();
 
         $count = 0;
@@ -59,11 +59,12 @@ class TranslationActionContainerObjectPublishHandler extends Handler
 
             }
 
+            $response->addSuccessRecord($record);
+
             $this->publishTranslationActionCollection($actions, $object);
 
             $count++;
         }
-
 
         $message = _t(self::class.'.MESSAGE', 'Published {Count} items', [
             'Count' => $count
@@ -71,13 +72,11 @@ class TranslationActionContainerObjectPublishHandler extends Handler
 
         $response->setMessage($message);
 
-
         return $response;
     }
 
     public function publishTranslationActionCollection(DataList $actions, DataObject $object)
     {
-
         if ($object->hasExtension(Versioned::class)) {
 
             if ($object->hasExtension(FluentExtension::class)) {
@@ -97,14 +96,11 @@ class TranslationActionContainerObjectPublishHandler extends Handler
 
                     $object->publishRecursive();
 
-                    if ($object->hasMethod('onAfterTranslationPublish')) {
-                        $object->onAfterTranslationPublish();
-                    }
+                    $object->invokeWithExtensions('onAfterTranslationPublish');
                 });
+
                 return;
-
             }
-
 
         } else {
             // If doesn't have versioned, we want to write all the data into the object.
@@ -113,7 +109,7 @@ class TranslationActionContainerObjectPublishHandler extends Handler
                 $translatedFieldName = $action->FieldName;
                 $actionValue = $action->getField("Value_" . $action->Locale);
                 $object->setField($translatedFieldName, $actionValue);
-                
+
                 $action->Status = "Accepted";
                 $action->PublishedPlace = "TranslationAdmin";
                 $action->write();
@@ -121,11 +117,6 @@ class TranslationActionContainerObjectPublishHandler extends Handler
 
             $object->write();
             return;
-                
-
-
         }
-
     }
-
 }

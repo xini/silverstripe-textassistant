@@ -3,22 +3,21 @@
 namespace S2Hub\TextAssistant\Forms\GridField;
 
 use S2Hub\TextAssistant\Models\TranslationAction;
-use SilverStripe\Core\Convert;
-use SilverStripe\ORM\DataList;
-use SilverStripe\ORM\DataObject;
+use SilverStripe\CMS\Model\SiteTree;
+use SilverStripe\Forms\CompositeField;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\FormAction;
-use SilverStripe\Forms\HiddenField;
-use SilverStripe\Versioned\Versioned;
-use SilverStripe\Forms\CompositeField;
 use SilverStripe\Forms\GridField\GridFieldDetailForm_ItemRequest;
+use SilverStripe\Forms\HiddenField;
 use SilverStripe\Forms\LiteralField;
 use SilverStripe\Forms\ToggleCompositeField;
-use SilverStripe\CMS\Model\SiteTree;
+use SilverStripe\ORM\DataList;
+use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\SS_List;
+use SilverStripe\Versioned\Versioned;
+use SilverStripe\View\ViewableData;
 use TractorCow\Fluent\Extension\FluentExtension;
 use TractorCow\Fluent\State\FluentState;
-use SilverStripe\ORM\SS_List;
-use SilverStripe\View\ViewableData;
 
 class TranslationActionContainerObjectItemRequest extends GridFieldDetailForm_ItemRequest
 {
@@ -100,23 +99,28 @@ class TranslationActionContainerObjectItemRequest extends GridFieldDetailForm_It
         if ($isVersioned) {
             Versioned::set_stage($currentStage);
 
-            $object->publishRecursive();
+            FluentState::singleton()->withState(function (FluentState $newState) use ($actions, $object) {
+                $newState->setLocale($actions->first()->Locale);
+
+                // get object in locale
+                $object = DataObject::get_by_id($object->ClassName, $object->ID);
+
+                $object->publishRecursive();
+            });
         }
 
-        if ($object->hasMethod('onAfterTranslationPublish')) {
-            $object->onAfterTranslationPublish();
-        }
+        $object->invokeWithExtensions('onAfterTranslationPublish');
 
         $message = _t(
             self::class . '.PUBLISH_MESSAGE',
             'Published "{Name}".',
             [
-                'Name' => Convert::raw2xml($object->Title)
+                'Name' => $object->Title
             ]
         );
 
         $controller = $this->getToplevelController();
-        $controller->getResponse()->addHeader('X-Status', $message);
+        $controller->getResponse()->addHeader('X-Status', rawurldecode($message));
 
         // close self and return to gridfield
         return $controller->redirect($controller->Link());
@@ -130,7 +134,7 @@ class TranslationActionContainerObjectItemRequest extends GridFieldDetailForm_It
         }
 
         $doResetEditableUrlSegment = false;
-        
+
         foreach ($actions as $action) {
 
             if ($action->FieldName === "Title" && $object->config()->editable_urlsegment === true) {
