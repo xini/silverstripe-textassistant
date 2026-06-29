@@ -5,6 +5,8 @@ namespace S2Hub\TextAssistant\Models;
 use SilverStripe\Forms\TextareaField;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\ORM\DataObject;
+use SilverStripe\Security\Permission;
+use SilverStripe\Security\Security;
 
 class TextAssistantSettings extends DataObject
 {
@@ -36,5 +38,61 @@ class TextAssistantSettings extends DataObject
             $record->write();
         }
         return $record;
+    }
+
+    public function canEdit($member = null)
+    {
+        if (!$member) {
+            $member = Security::getCurrentUser();
+        }
+
+        // check for extensions, we do this first as they can overrule everything
+        $extended = $this->extendedCan(__FUNCTION__, $member);
+        if ($extended !== null) {
+            return $extended;
+        }
+
+        if (// either we have an ADMIN
+            (bool)Permission::checkMember($member, "ADMIN")
+            || (
+                // or specific persmissions
+                Permission::checkMember($member, "CMS_ACCESS_TranslationAdmin") &&
+                Permission::checkMember($member, "EDIT_TEXTASSISTANT_SETTINGS")
+            )
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public function canView($member = null)
+    {
+        if (!$member) {
+            $member = Security::getCurrentUser();
+        }
+
+        // check for extensions, we do this first as they can overrule everything
+        $extended = $this->extendedCan(__FUNCTION__, $member);
+        if ($extended !== null) {
+            return $extended;
+        }
+
+        return $this->canEdit($member);
+    }
+
+    public function canDelete($member = null)
+    {
+        if (!$member) {
+            $member = Security::getCurrentUser();
+        }
+
+        // check for extensions, we do this first as they can overrule everything
+        $extended = $this->extendedCan(__FUNCTION__, $member);
+        if ($extended !== null) {
+            return $extended;
+        }
+
+        return $this->canEdit($member);
     }
 }

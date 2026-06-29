@@ -26,8 +26,6 @@ class TranslationActionContainerObjectPublishHandler extends Handler
 
     protected $label = 'Publish';
 
-    protected $recordLimit = 25;
-
     public function getI18nLabel()
     {
         return _t(self::class.'.TITLE', "Publish");

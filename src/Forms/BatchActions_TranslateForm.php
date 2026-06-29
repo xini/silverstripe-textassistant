@@ -4,7 +4,9 @@ namespace S2Hub\TextAssistant\Forms;
 
 use DNADesign\Elemental\Extensions\ElementalPageExtension;
 use DNADesign\Elemental\Models\BaseElement;
+use DNADesign\Elemental\Models\ElementalArea;
 use Exception;
+use Fromholdio\Elemental\Base\Model\EvoElementalArea;
 use S2Hub\TextAssistant\Controllers\TranslationAdmin;
 use S2Hub\TextAssistant\Extensions\FormFieldExtension;
 use S2Hub\TextAssistant\Jobs\QueuePageTranslationsJob;
@@ -73,7 +75,7 @@ class BatchActions_TranslateForm
 
         $fields->push(DropdownField::create('TranslateFrom', _t(self::class.'.TRANSLATEFROM', 'Translate from'), $locales, $initialTranslateFrom)->addExtraClass('no-change-track'));
         $fields->push(DropdownField::create('TranslateTo', _t(self::class.'.TRANSLATETO', 'Translate to'), $locales, $currentLocale)->addExtraClass('no-change-track'));
-        
+
         $fields->push(new LiteralField('translate-option-wrapper-start', '</div>'));
 
         $this->getFieldsForRequest($fields, $request);
@@ -99,7 +101,7 @@ class BatchActions_TranslateForm
         if ($form->Fields()->hasTabSet()) {
             $form->Fields()->findOrMakeTab('Root')->setTemplate('SilverStripe\\Forms\\CMSTabSet');
             $form->addExtraClass('cms-tabset');
-        
+
         }
 
         if ($this->leftAndMain->getRequest()->isGET()) {
@@ -116,7 +118,7 @@ class BatchActions_TranslateForm
         $fields = new FieldList();
 
         $fields->push(new LiteralField('TranslationStarted', "<div class='translation-started'>"._t(self::class.'.STARTED', 'Translation started')."</div>"));
-        
+
         $form = $this->getForm($request)
             ->setActions(new FieldList([
                 FormAction::create('close', _t(FormFieldExtension::class.'.CLOSE', 'Close'))->setUseButtonTag(true)->addExtraClass('btn btn-primary')
@@ -143,7 +145,7 @@ class BatchActions_TranslateForm
 
         if ($fromLocale === $toLocale) {
             $validationResult->addError(_t(self::class.'.SAMELOCALE', 'Cannot translate to the same locale'), ValidationResult::TYPE_ERROR);
-            
+
         }
 
         if (!$validationResult->isValid()) {
@@ -221,7 +223,7 @@ class BatchActions_TranslateForm
     private function getCompositeFieldForPage(SiteTree $page, array $allowedIds): CompositeField
     {
         $fields = new FieldList();
-        
+
         if ($page->getPageIconURL())    $pageIcon = '<img src='.$page->getPageIconURL().' />';
         else if ($page->getIconClass()) $pageIcon = '<div class="'.$page->getIconClass().' page-icon"></div>';
         else $pageIcon = "";
@@ -257,7 +259,7 @@ class BatchActions_TranslateForm
     {
         $options = new ArrayList();
         $controller = ModelAsController::controller_for($page, null);
-        
+
         // If has blocks, add checkbox for translate those
         $options->merge(self::getPageOptions($page, $controller));
 
@@ -277,8 +279,14 @@ class BatchActions_TranslateForm
         $options = new ArrayList();
 
         $elementalAreas = [];
-        if ($page->hasExtension(ElementalPageExtension::class)) {
-            $elementalAreas = [$page->ElementalArea()];
+        if (class_exists(ElementalArea::class) && $page->hasMethod('getElementalRelations')) {
+            $relations = $page->getElementalRelations();
+            foreach ($relations as $relation) {
+                $area = $page->getComponent($relation);
+                if ($area && $area->exists() && is_a($area, ElementalArea::class)) {
+                    $elementalAreas[] = $area;
+                }
+            }
         }
 
         if (!empty($elementalAreas)) {
@@ -293,7 +301,7 @@ class BatchActions_TranslateForm
             }
 
         }
-        
+
         return $options;
     }
 

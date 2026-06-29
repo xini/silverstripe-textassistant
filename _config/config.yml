@@ -14,3 +14,11 @@ SilverStripe\ORM\DataObject:
 SilverStripe\Admin\LeftAndMain:
   extensions:
     - S2Hub\TextAssistant\Extensions\LeftAndMainExtension
+
+TractorCow\Fluent\Model\Locale:
+  extensions:
+    - S2Hub\TextAssistant\Extensions\LocaleExtension
+
+SilverStripe\Security\Member:
+  extensions:
+    - S2Hub\TextAssistant\Extensions\MemberExtension
