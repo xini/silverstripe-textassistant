@@ -11,13 +11,13 @@ use TractorCow\Fluent\Model\Locale;
 class MemberExtension extends Extension
 {
     private static $belongs_many_many = [
-        'ApprovalLocales' => Locale::class,
+        'ProofreadingLocales' => Locale::class,
     ];
 
     public function updateCMSFields(FieldList $fields)
     {
         $fields->removeByName([
-            'ApprovalLocales',
+            'ProofreadingLocales',
         ]);
         if (Permission::check("EDIT_PERMISSIONS")
             && Permission::checkMember($this->getOwner(), "CMS_ACCESS_TranslationAdmin")
@@ -26,8 +26,8 @@ class MemberExtension extends Extension
                 'Root.AITranslations',
                 [
                     CheckboxSetField::create(
-                        'ApprovalLocales',
-                        _t(__CLASS__ . '.APPROVALLOCALES', 'AI translations allowed to approve'),
+                        'ProofreadingLocales',
+                        _t(__CLASS__ . '.PROOFREADINGLOCALES', 'AI translations allowed to approve'),
                         Locale::get()
                     )
                 ]

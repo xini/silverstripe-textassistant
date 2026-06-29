@@ -82,7 +82,7 @@ class TranslationAdmin extends ModelAdmin implements PermissionProvider
 
             if (($member = Security::getCurrentUser())
                 && !Permission::checkMember($member, 'ADMIN')
-                && ($locales = $member->ApprovalLocales())
+                && ($locales = $member->ProofreadingLocales())
                 && $locales->exists()
             ) {
                 $list = $list->filter([
