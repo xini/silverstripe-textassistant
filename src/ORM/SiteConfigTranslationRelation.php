@@ -2,12 +2,12 @@
 
 namespace S2Hub\TextAssistant\ORM;
 
-use DNADesign\Elemental\Extensions\ElementalAreasExtension;
 use DNADesign\Elemental\Models\BaseElement;
+use DNADesign\Elemental\Models\ElementalArea;
 use S2Hub\TextAssistant\Forms\BatchActions_TranslateForm;
-use SilverStripe\SiteConfig\SiteConfig;
 use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataObject;
+use SilverStripe\SiteConfig\SiteConfig;
 
 class SiteConfigTranslationRelation extends TranslationRelation
 {
@@ -26,7 +26,7 @@ class SiteConfigTranslationRelation extends TranslationRelation
     {
         $items = [];
 
-        if ($object->hasExtension(ElementalAreasExtension::class)) {
+        if (class_exists(ElementalArea::class) && $object->hasMethod('getElementalRelations')) {
             $elementIDs = [];
             $relations = $object->getElementalRelations();
             foreach ($relations as $relation) {

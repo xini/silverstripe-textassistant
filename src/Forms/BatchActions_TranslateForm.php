@@ -268,7 +268,13 @@ class BatchActions_TranslateForm
         }
 
         if ($page->URLSegment == 'home' && SiteConfig::current_site_config()->hasExtension(FluentExtension::class)) {
-            $options->push(new SiteConfigTranslationRelation('SiteConfig', SiteConfig::current_site_config(), !SiteConfig::current_site_config()->existsInLocale()));
+            $siteConfig = SiteConfig::current_site_config();
+
+            $options->push(new SiteConfigTranslationRelation('SiteConfig', $siteConfig, !$siteConfig->existsInLocale()));
+
+            if ($siteConfig->hasMethod('addTranslationOptions')) {
+                $options->merge($siteConfig->addTranslationOptions());
+            }
         }
 
         return $options;
