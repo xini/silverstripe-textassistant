@@ -98,7 +98,7 @@ class TranslationActionContainerObject extends ViewableData implements DataObjec
 
     public function getObjectType()
     {
-        $title = _t($this->dataObject->ClassName.'.SINGULARNAME', $this->dataObject->ClassName);
+        $title = $this->dataObject->i18n_singular_name();
 
         if ($title === $this->dataObject->ClassName) {
             $title = _t($this->dataObject->ClassName.'.CMSTITLE', $this->dataObject->ClassName);
