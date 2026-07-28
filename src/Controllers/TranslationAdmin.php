@@ -142,7 +142,10 @@ class TranslationAdmin extends ModelAdmin implements PermissionProvider
                 ->removeComponentsByType(GridFieldExportButton::class)
                 ->removeComponentsByType(GridFieldPrintButton::class);
 
-            $form->Fields()->insertBefore(TranslationAdminInformationField::create($gridField->getList())->setForm($form), $gridField);
+            $form->Fields()->insertBefore(
+                $this->sanitiseClassName($this->modelClass),
+                TranslationAdminInformationField::create($gridField->getList())->setForm($form)
+            );
 
             $columns = $config->getComponentByType(GridFieldDataColumns::class);
 
