@@ -6,7 +6,6 @@ use DNADesign\Elemental\Extensions\ElementalPageExtension;
 use DNADesign\Elemental\Models\BaseElement;
 use DNADesign\Elemental\Models\ElementalArea;
 use Exception;
-use Fromholdio\Elemental\Base\Model\EvoElementalArea;
 use S2Hub\TextAssistant\Controllers\TranslationAdmin;
 use S2Hub\TextAssistant\Extensions\FormFieldExtension;
 use S2Hub\TextAssistant\Jobs\QueuePageTranslationsJob;
