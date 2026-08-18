@@ -222,15 +222,10 @@ class ObjectTranslationJob extends AbstractQueuedJob
                             $recordInLocale->setField($fieldName, "");
 
                             if (!empty($recordInLocale->getChangedFields(true, DataObject::CHANGE_VALUE))) {
-                                if ($recordInLocale->hasExtension(FluentVersionedExtension::class)) {
-                                    $recordInLocale->writeToStage(Versioned::DRAFT);
-                                } else {
+                                if (!$recordInLocale->hasExtension(FluentVersionedExtension::class)) {
                                     $recordInLocale->write();
                                 }
-                                
                             }
-
-
                         });
                     }
                 }
@@ -247,25 +242,6 @@ class ObjectTranslationJob extends AbstractQueuedJob
                     TranslationJobHelper::FluentDeleteOldGeneratedTranslations($action, $records[$toLocale], $fieldName, $toLocale);
                     TranslationJobHelper::FluentDeleteOldDraftManualTranslations($action, $records[$toLocale], $fieldName, $toLocale);
 
-                    // If Versioned, write to stage. If no Versioned, we're not changing the DataObject.
-                    if ($records[$toLocale]->hasExtension(FluentVersionedExtension::class)) {
-
-                        $bufferValue = $this->chunking_object_buffer[$uniq];
-                        $toRecord = $records[$toLocale];
-
-                        FluentState::singleton()->withState(function (FluentState $newState) use ($toRecord, $fieldName, $toLocale, $bufferValue) {
-                            $newState->setLocale($toLocale);
-
-                            DataObject::config()->set('validation_enabled', false);
-
-                            Versioned::set_stage(Versioned::DRAFT);
-                            $toRecord->setField($fieldName, $bufferValue);
-                            $toRecord->write();
-                        });
-
-                        unset($bufferValue);
-                    }
-
                     unset($this->chunking_object_buffer[$uniq]);
 
                 } else {
@@ -280,34 +256,8 @@ class ObjectTranslationJob extends AbstractQueuedJob
 
                 TranslationJobHelper::FluentDeleteOldGeneratedTranslations($action, $records[$toLocale], $fieldName, $toLocale);
                 TranslationJobHelper::FluentDeleteOldDraftManualTranslations($action, $records[$toLocale], $fieldName, $toLocale);
-
-                // If Versioned, write to stage. If no Versioned, we're not changing the DataObject.
-                if ($records[$toLocale]->hasExtension(FluentVersionedExtension::class)) {
-
-                    FluentState::singleton()->withState(function (FluentState $newState) use ($records, $fieldName, $result, $toLocale) {
-                        $newState->setLocale($toLocale);
-
-                        DataObject::config()->set('validation_enabled', false);
-
-                        Versioned::set_stage(Versioned::DRAFT);
-                        $records[$toLocale]->setField($fieldName, $result);
-                        $records[$toLocale]->write();
-
-
-                    });
-                } elseif ($records[$toLocale]->hasExtension(FluentExtension::class) && !$records[$toLocale]->existsInLocale($toLocale)) {
-                    FluentState::singleton()->withState(function (FluentState $newState) use ($records, $toLocale) {
-                        $newState->setLocale($toLocale);
-
-                        DataObject::config()->set('validation_enabled', false);
-
-                        $records[$toLocale]->write();
-                    });
-                }
             }
-
         }
-
     }
 
     public function translateTranslatable($item)
@@ -396,13 +346,8 @@ class ObjectTranslationJob extends AbstractQueuedJob
                     $record->setField($fieldName, "");
 
                     DataObject::config()->set('validation_enabled', false);
-                    if (!empty($record->getChangedFields(true, DataObject::CHANGE_VALUE))) {
-                        // If has versioning, write to draft, otherwise just write it completely.
-                        if ($record->hasExtension(Versioned::class)) {
-                            $record->writeToStage(Versioned::DRAFT);
-                        } else {
-                            $record->write();
-                        }
+                    if (!$record->hasExtension(Versioned::class) && !empty($record->getChangedFields(true, DataObject::CHANGE_VALUE))) {
+                        $record->write();
                     }
 
                 }
@@ -421,13 +366,6 @@ class ObjectTranslationJob extends AbstractQueuedJob
                     TranslationJobHelper::TranslatableDeleteOldGeneratedTranslations($action, $record, $translatedField, $toLocale);
                     TranslationJobHelper::TranslatableDeleteOldDraftManualTranslations($action, $record, $translatedField, $toLocale);
 
-                    // If Versioned, write to stage. If no Versioned, we're not changing the DataObject.
-                    if ($record->hasExtension(Versioned::class)) {
-                        DataObject::config()->set('validation_enabled', false);
-                        $record->setField($translatedField, $this->chunking_object_buffer[$uniq]);
-                        $record->writeToStage(Versioned::DRAFT);
-                    }
-
                     unset($this->chunking_object_buffer[$uniq]);
 
                 } else {
@@ -442,27 +380,6 @@ class ObjectTranslationJob extends AbstractQueuedJob
 
                 TranslationJobHelper::TranslatableDeleteOldGeneratedTranslations($action, $record, $translatedField, $toLocale);
                 TranslationJobHelper::TranslatableDeleteOldDraftManualTranslations($action, $record, $translatedField, $toLocale);
-
-                // If Versioned, write to stage. If no Versioned, we're not changing the DataObject.
-                if ($record->hasExtension(Versioned::class)) {
-                    $translatedField = $record->getLocaleFieldName($field, $toLocale);
-
-                    $initial_editable_urlsegment = null;
-
-                    if ($field === "Title" && $record->config()->editable_urlsegment === true) {
-                        $initial_editable_urlsegment = $record->config()->editable_urlsegment;
-                        $record->config()->editable_urlsegment = false;
-
-                    }
-
-                    DataObject::config()->set('validation_enabled', false);
-                    $record->setField($translatedField, $result);
-                    $record->writeToStage(Versioned::DRAFT);
-
-                    if (!is_null($initial_editable_urlsegment)) {
-                        $record->config()->editable_urlsegment = $initial_editable_urlsegment;
-                    }
-                }
             }
 
         }
