@@ -95,7 +95,6 @@ class TranslationActionContainerObjectItemRequest extends GridFieldDetailForm_It
             $this->publishFluent($object, $actions, $data, $isVersioned);
         }
 
-
         if ($isVersioned) {
             Versioned::set_stage($currentStage);
 
@@ -152,21 +151,21 @@ class TranslationActionContainerObjectItemRequest extends GridFieldDetailForm_It
                 $translationChangedByUser = true;
             }
 
-            if ($translationChangedByUser || !$isVersioned) {
+            if ($translationChangedByUser) {
                 $object->setField($action->FieldName . "_" . $action->Locale, $formValue);
 
                 $hasChanges = true;
             }
-
-
+		}
+ 
+        if ($hasChanges) {
+            $object->write();
+        }
+ 
+        foreach ($actions as $action) {
             $action->Status = "Accepted";
             $action->PublishedPlace = "TranslationAdmin";
             $action->write();
-
-        }
-
-        if ($hasChanges) {
-            $object->write();
         }
 
         if ($doResetEditableUrlSegment) {
@@ -197,26 +196,23 @@ class TranslationActionContainerObjectItemRequest extends GridFieldDetailForm_It
                     $translationChangedByUser = true;
                 }
 
-                if ($translationChangedByUser || !$isVersioned) {
-
+                if ($translationChangedByUser || $object->getField($action->FieldName) != $formValue) {
                     $object->setField($action->FieldName, $formValue);
 
                     $hasChanges = true;
                 }
-
-
-                $action->Status = "Accepted";
-                $action->PublishedPlace = "TranslationAdmin";
-                $action->write();
             }
 
             if ($hasChanges) {
                 $object->write();
             }
 
+            foreach ($actions as $action) {
+                $action->Status = "Accepted";
+                $action->PublishedPlace = "TranslationAdmin";
+                $action->write();
+            }
         });
-
-
     }
 
     public function getFieldsForObject(TranslationAction $record): FieldList

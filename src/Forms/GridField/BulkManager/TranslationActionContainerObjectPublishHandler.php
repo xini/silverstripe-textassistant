@@ -28,7 +28,7 @@ class TranslationActionContainerObjectPublishHandler extends Handler
 
     public function getI18nLabel()
     {
-        return _t(self::class.'.TITLE', "Publish");
+        return _t(self::class . '.TITLE', "Publish");
     }
 
     public function publish(HTTPRequest $request)
@@ -64,7 +64,7 @@ class TranslationActionContainerObjectPublishHandler extends Handler
             $count++;
         }
 
-        $message = _t(self::class.'.MESSAGE', 'Published {Count} items', [
+        $message = _t(self::class . '.MESSAGE', 'Published {Count} items', [
             'Count' => $count
         ]);
 
@@ -75,46 +75,60 @@ class TranslationActionContainerObjectPublishHandler extends Handler
 
     public function publishTranslationActionCollection(DataList $actions, DataObject $object)
     {
-        if ($object->hasExtension(Versioned::class)) {
-
-            if ($object->hasExtension(FluentExtension::class)) {
-
-                FluentState::singleton()->withState(function (FluentState $newState) use ($actions, $object) {
-                    $newState->setLocale($actions->first()->Locale);
-
-                    // get object in locale
-                    $object = DataObject::get_by_id($object->ClassName, $object->ID);
-
-                    // mark actions as accepted
+        if ($object->hasExtension(FluentExtension::class)) {
+            FluentState::singleton()->withState(function (FluentState $newState) use ($actions, $object) {
+                $newState->setLocale($actions->first()->Locale);
+ 
+                // get object in locale
+                $object = DataObject::get_by_id($object->ClassName, $object->ID);
+ 
+                if ($object->hasExtension(Versioned::class)) {
+                    Versioned::set_stage(Versioned::DRAFT);
+ 
                     foreach ($actions as $action) {
-                        $action->Status = "Accepted";
-                        $action->PublishedPlace = "TranslationAdmin";
-                        $action->write();
+                        $translatedFieldName = $action->FieldName;
+                        $actionValue = $action->getField("Value_" . $action->Locale);
+                        $object->setField($translatedFieldName, $actionValue);
                     }
-
+ 
+                    $object->write();
                     $object->publishRecursive();
+                } else {
+                    foreach ($actions as $action) {
+                        $translatedFieldName = $action->FieldName;
+                        $actionValue = $action->getField("Value_" . $action->Locale);
+                        $object->setField($translatedFieldName, $actionValue);
+                    }
+ 
+                    $object->write();
+                }
+ 
+                foreach ($actions as $action) {
+                    $action->Status = "Accepted";
+                    $action->PublishedPlace = "TranslationAdmin";
+                    $action->write();
+                }
+ 
+                $object->invokeWithExtensions('onAfterTranslationPublish');
+            });
 
-                    $object->invokeWithExtensions('onAfterTranslationPublish');
-                });
+            return;
+        }
 
-                return;
-            }
-
-        } else {
-            // If doesn't have versioned, we want to write all the data into the object.
-
+        if (!$object->hasExtension(Versioned::class)) {
             foreach ($actions as $action) {
                 $translatedFieldName = $action->FieldName;
                 $actionValue = $action->getField("Value_" . $action->Locale);
                 $object->setField($translatedFieldName, $actionValue);
+            }
 
+            $object->write();
+ 
+            foreach ($actions as $action) {
                 $action->Status = "Accepted";
                 $action->PublishedPlace = "TranslationAdmin";
                 $action->write();
             }
-
-            $object->write();
-            return;
         }
     }
 }
