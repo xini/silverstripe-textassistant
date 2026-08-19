@@ -61,7 +61,7 @@ class QueuePageTranslationsJob extends AbstractQueuedJob
         $item = array_shift($remaining);
 
         FluentState::singleton()->withState(function (FluentState $state) use ($item, $remaining) {
-            $state->setLocale($this->jobData->toLocale);
+            $state->setLocale($this->jobData->fromLocale);
 
             $this->queue($item);
         });
@@ -92,7 +92,7 @@ class QueuePageTranslationsJob extends AbstractQueuedJob
         if ($item == 0) return;
 
         $page = DataObject::get_by_id(SiteTree::class, $item);
-        TranslationAction_ObjectQueue::queue($page, $group);
+        $this->queueObject($page, $group);
 
         $options = BatchActions_TranslateForm::getTranslationRelationsForPage($page);
 
