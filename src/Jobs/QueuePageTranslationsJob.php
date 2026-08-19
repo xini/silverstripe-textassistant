@@ -19,6 +19,11 @@ use TractorCow\Fluent\State\FluentState;
 
 class QueuePageTranslationsJob extends AbstractQueuedJob
 {
+    /**
+     * Prevent cycles in the relation graph from causing unbounded recursion.
+     * The key includes the class because IDs are only unique per table/class.
+     */
+    private $visitedObjects = [];
 
     public function getTitle()
     {
@@ -46,6 +51,8 @@ class QueuePageTranslationsJob extends AbstractQueuedJob
 
         $this->remaining = $remaining;
 
+        $this->visitedObjects = [];
+
         $this->totalSteps = count($this->remaining);
     }
 
@@ -62,11 +69,21 @@ class QueuePageTranslationsJob extends AbstractQueuedJob
 
         $item = array_shift($remaining);
 
-        FluentState::singleton()->withState(function (FluentState $state) use ($item, $remaining) {
-            $state->setLocale($this->jobData->fromLocale);
+        // Cycle detection is needed for the current relation graph, but does
+        // not need to retain every object from the whole translation job.
+        $this->visitedObjects = [];
 
-            $this->queue($item);
-        });
+        try {
+            FluentState::singleton()->withState(function (FluentState $state) use ($item, $remaining) {
+                $state->setLocale($this->jobData->fromLocale);
+
+                $this->queue($item);
+            });
+        } finally {
+            // The job may be serialised between process() calls, so do not
+            // rely on the static insert buffer surviving until completion.
+            TranslationAction_ObjectQueue::insertRemains();
+        }
 
         $this->remaining = $remaining;
 
@@ -77,9 +94,9 @@ class QueuePageTranslationsJob extends AbstractQueuedJob
             return;
         }
 
-        TranslationAction_ObjectQueue::insertRemains();
         $this->queueTranslationJobs();
-
+		TranslationAction_ObjectQueue::resetQueueState();
+		
         // Queue runner will mark this job as finished
         $this->isComplete = true;
     }
@@ -117,14 +134,15 @@ class QueuePageTranslationsJob extends AbstractQueuedJob
                                 $this->queueObject($relatedObject, $group);
                             }
                         }
-
                     }
+					unset($relatedToQueue);
                 }
-                gc_collect_cycles();
+                unset($list);
             }
-            
         }
-
+        $page->destroy();
+        unset($page);
+        unset($options);
     }
 
     public function queueTranslationJobs()
@@ -137,7 +155,7 @@ class QueuePageTranslationsJob extends AbstractQueuedJob
 
         $total = $objects->count();
         $chunk_max_size = 50;
-        $parts = $total / $chunk_max_size;
+        $parts = (int) ceil($total / $chunk_max_size);
 
         for($i = 0; $i < $parts; $i++) {
             $chunk = $objects->limit($chunk_max_size, $i * $chunk_max_size);
@@ -158,12 +176,26 @@ class QueuePageTranslationsJob extends AbstractQueuedJob
                 $job->setup();
                 SQLUpdate::create("QueuedJobDescriptor", ['TotalSteps' => sizeof($job->remaining)], ['ID' => $descriptorID])->execute();
             }
+            unset($descriptorID);
+            unset($chunk);
+            unset($job);
+            unset($jobData);
         }
-
+        unset($objects);
     }
 
     public function queueObject(DataObject $object, $group)
     {
+        if (!$object || !$object->exists()) {
+            return;
+        }
+
+        $objectKey = get_class($object) . ':' . $object->ID;
+        if (isset($this->visitedObjects[$objectKey])) {
+            return;
+        }
+        $this->visitedObjects[$objectKey] = true;
+
         TranslationAction_ObjectQueue::queue($object, $group);
 
         // go through all relations and queue them as well
@@ -183,6 +215,8 @@ class QueuePageTranslationsJob extends AbstractQueuedJob
                         }
                         $this->queueObject($relationObject, $group);
                     }
+                    $relationObject->destroy();
+                    unset($relationObject);
                 }
             }
         }
@@ -202,14 +236,15 @@ class QueuePageTranslationsJob extends AbstractQueuedJob
                             }
                             $this->queueObject($relationObject, $group);
                         }
+                        $relationObject->destroy();
+                        unset($relationObject);
                     }
                 }
             }
         }
-
+        $object->destroy();
         unset($object);
         unset($relations);
-        unset($relationObject);
         gc_collect_cycles();
     }
 }

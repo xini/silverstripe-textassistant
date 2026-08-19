@@ -84,9 +84,20 @@ class TranslationAction_ObjectQueue extends DataObject
         }
     }
 
+     /**
+     * Flush the in-memory queue and release the per-request de-duplication
+     * state. This is important for long-running queued-job workers.
+     */
+    public static function resetQueueState()
+    {
+        self::insertRemains();
+
+        self::$queued_in_group = [];
+        self::$insert = null;
+    }
+
     public static function objectQueuedInGroup(DataObject $object, string $group)
     {
         return isset(self::$queued_in_group[$group][get_class($object)][$object->ID]);
     }
-
 }
