@@ -40,7 +40,7 @@ class ObjectTranslationJob extends AbstractQueuedJob
 
         $ids = $this->jobData->ids;
         $toLocale = $this->jobData->toLocale;
-        $fromLocale = $this->jobData->toLocale;
+        $fromLocale = $this->jobData->fromLocale;
 
         if (empty($ids) || empty($toLocale) || empty($fromLocale)) {
             throw new Exception("ids, dataClass, toLocale and fromLocale must all be defined");
@@ -57,8 +57,7 @@ class ObjectTranslationJob extends AbstractQueuedJob
             }
 
             if ($targetObject->hasExtension(FluentExtension::class)) {
-                $remaining = array_merge($remaining, TranslationJobHelper::setupForFluent($targetObject, $toLocale));
-
+                $remaining = array_merge($remaining, TranslationJobHelper::setupForFluent($targetObject, $fromLocale));
             } else {
                 throw new Exception(get_class($targetObject)." had neither Translatable or Fluent");
             }
@@ -125,7 +124,7 @@ class ObjectTranslationJob extends AbstractQueuedJob
         foreach ($allowed_locales as $locale) {
             $records[$locale] = FluentState::singleton()->withState(function (FluentState $newState) use ($id, $dataClass, $locale) {
                 $newState->setLocale($locale);
-                return DataObject::get_by_id($dataClass, $id);
+                return DataObject::get_by_id($dataClass, $id, false);
             });
 
         }

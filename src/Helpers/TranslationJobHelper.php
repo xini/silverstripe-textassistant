@@ -5,13 +5,16 @@ namespace S2Hub\TextAssistant\Helpers;
 use Exception;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
+use SilverStripe\Forms\HTMLEditor\HTMLEditorField;
+use SilverStripe\Forms\ReadonlyField;
+use SilverStripe\Forms\TextareaField;
 use SilverStripe\Forms\TextField;
 use SilverStripe\Core\Config\Config;
-use SilverStripe\Forms\TextareaField;
 use TractorCow\Fluent\State\FluentState;
 use SilverStripe\ORM\FieldType\DBHTMLText;
+use SilverStripe\ORM\FieldType\DBText;
+use SilverStripe\ORM\FieldType\DBVarchar;
 use TractorCow\Fluent\Extension\FluentExtension;
-use SilverStripe\Forms\HTMLEditor\HTMLEditorField;
 use S2Hub\TextAssistant\Models\TranslationAction;
 use SilverStripe\View\Parsers\URLSegmentFilter;
 
@@ -76,13 +79,13 @@ class TranslationJobHelper
         return $remaining;
     }
 
-    public static function setupForFluent(DataObject $object, string $toLocale): array
+    public static function setupForFluent(DataObject $object, string $fromLocale): array
     {
-        return FluentState::singleton()->withState(function (FluentState $newState) use ($object, $toLocale) {
-            $newState->setLocale($toLocale);
+        return FluentState::singleton()->withState(function (FluentState $newState) use ($object, $fromLocale) {
+            $newState->setLocale($fromLocale);
             $remaining = [];
 
-            $object = DataObject::get_by_id(get_class($object), $object->ID);
+            $object = DataObject::get_by_id(get_class($object), $object->ID, false);
 
             $ignore_translate = $object->config()->openai_ignore_translate ?? [];
 
@@ -114,16 +117,23 @@ class TranslationJobHelper
                     continue;
                 }
     
-                // FluentExtension localises everything. We use ->dataFields() to find TextField/HTMLEditorField
-                // Without this we'll translate fields that may be e.g. SelectionGroup that's a Varchar.
-                if (!($formFieldForType[$field] instanceof TextField ||
-                    $formFieldForType[$field] instanceof TextareaField ||
-                    $formFieldForType[$field] instanceof HTMLEditorField)) {
-    
+                // FluentExtension localises everything, so we still need to know which fields hold
+                // translatable text. The CMS field is only used to prove the field is editable content
+                // (see above); the actual type comes from the DB field, because getCMSFields() may
+                // return e.g. a ReadonlyField when the current context lacks edit permission.
+                $formField = $formFieldForType[$field];
+                if ($formField instanceof ReadonlyField) {
+                    // fall back to the DB type for readonly fields only
+                    if (!self::isTranslatableDBField($object, $field)) {
+                        continue;
+                    }
+                } elseif (!($formField instanceof TextField
+                    || $formField instanceof TextareaField
+                    || $formField instanceof HTMLEditorField)) {
                     continue;
                 }
-    
-                if ($formFieldForType[$field] instanceof HTMLEditorField) {
+
+                if (self::isHTMLDBField($object, $field)) {
     
                     $chunks = self::split_html_to_chunks($object->getField($field));
     
@@ -171,6 +181,22 @@ class TranslationJobHelper
         });
     }
 
+    protected static function isHTMLDBField(DataObject $object, string $field): bool
+    {
+        return $object->dbObject($field) instanceof DBHTMLText;
+    }
+
+    protected static function isTranslatableDBField(DataObject $object, string $field): bool
+    {
+        $fieldObj = $object->dbObject($field);
+
+        if (!$fieldObj) {
+            return false;
+        }
+
+        // DBHTMLText extends DBText, DBHTMLVarchar extends DBVarchar, so both are covered.
+        return $fieldObj instanceof DBText || $fieldObj instanceof DBVarchar;
+    }
 
     public static function split_html_to_chunks($html): array
     {
