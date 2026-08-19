@@ -3,6 +3,7 @@
 namespace S2Hub\TextAssistant\Jobs;
 
 use Exception;
+use DNADesign\Elemental\Models\BaseElement;
 use S2Hub\TextAssistant\Models\TranslationAction_ObjectQueue;
 use S2Hub\TextAssistant\Forms\BatchActions_TranslateForm;
 use SilverStripe\ORM\DataList;
@@ -13,6 +14,7 @@ use SilverStripe\ORM\Queries\SQLUpdate;
 use Symbiote\QueuedJobs\Services\QueuedJob;
 use Symbiote\QueuedJobs\Services\QueuedJobService;
 use Symbiote\QueuedJobs\Services\AbstractQueuedJob;
+use TractorCow\Fluent\Extension\FluentExtension;
 use TractorCow\Fluent\State\FluentState;
 
 class QueuePageTranslationsJob extends AbstractQueuedJob
@@ -164,31 +166,50 @@ class QueuePageTranslationsJob extends AbstractQueuedJob
     {
         TranslationAction_ObjectQueue::queue($object, $group);
 
-        $translate_relation_option = Config::inst()->get(get_class($object), 'translate_relation_option');
-
-        if ($translate_relation_option !== null) {
-
-            foreach ($translate_relation_option as $relation) {
-                $type = $object->getRelationType($relation);
-
-                if (in_array($type, ['has_one', 'belongs_to'])) {
-
+        // go through all relations and queue them as well
+        // has_one and belongs_to
+        $relations = $object->hasOne();
+        $relations = array_merge($relations, $object->belongsTo());
+        if (count($relations)) {
+            foreach ($relations as $relation => $class) {
+                if (!in_array($relation, ['Parent'])) {
                     $relationObject = $object->$relation();
-                    $this->queueObject($relationObject, $group);
-
-                } else if (in_array($type, ['has_many', 'many_many', 'belongs_many_many'])) {
-
-                    foreach ($object->$relation() as $relationObject) {
+                    if ($relationObject && $relationObject->exists()) {
+                        if (is_a($relationObject, SiteTree::class)
+                            || is_a($relationObject, BaseElement::class)
+                            || !$relationObject->hasExtension(FluentExtension::class)
+                        ) {
+                            continue;
+                        }
                         $this->queueObject($relationObject, $group);
                     }
-
                 }
-
             }
-
+        }
+        // has_many and many_many
+        $relations = $object->hasMany();
+        $relations = array_merge($relations, $object->manyMany());
+        if (count($relations)) {
+            foreach ($relations as $relation => $class) {
+                if (!in_array($relation, ['VirtualPages', 'BackLinks'])) {
+                    foreach ($object->$relation() as $relationObject) {
+                        if ($relationObject && $relationObject->exists()) {
+                            if (is_a($relationObject, SiteTree::class)
+                                || is_a($relationObject, BaseElement::class)
+                                || !$relationObject->hasExtension(FluentExtension::class)
+                            ) {
+                                continue;
+                            }
+                            $this->queueObject($relationObject, $group);
+                        }
+                    }
+                }
+            }
         }
 
         unset($object);
+        unset($relations);
+        unset($relationObject);
+        gc_collect_cycles();
     }
-
 }
