@@ -242,9 +242,26 @@ class QueuePageTranslationsJob extends AbstractQueuedJob
                 }
             }
         }
+        unset($relations);
+
+        // get additional objects provided by the objects
+        if ($object->hasMethod('getAdditionalTranslationObjects')) {
+            foreach ($object->getAdditionalTranslationObjects() as $additionalObject) {
+                if (
+                    $additionalObject->exists()
+                    && !is_a($additionalObject, SiteTree::class)
+                    && !is_a($additionalObject, BaseElement::class)
+                    && $additionalObject->hasExtension(FluentExtension::class)
+                ) {
+                    $this->queueObject($additionalObject, $group);
+                }
+                $additionalObject->destroy();
+                unset($additionalObject);
+            }
+        }
+
         $object->destroy();
         unset($object);
-        unset($relations);
         gc_collect_cycles();
     }
 }
