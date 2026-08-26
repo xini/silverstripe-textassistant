@@ -3,6 +3,7 @@
 namespace S2Hub\TextAssistant\View;
 
 use S2Hub\TextAssistant\Models\TranslationAction;
+use SilverStripe\Core\ClassInfo;
 use SilverStripe\ORM\DataList;
 use SilverStripe\View\ViewableData;
 use SilverStripe\ORM\DataObjectInterface;
@@ -98,17 +99,7 @@ class TranslationActionContainerObject extends ViewableData implements DataObjec
 
     public function getObjectType()
     {
-        $title = $this->dataObject->i18n_singular_name();
-
-        if ($title === $this->dataObject->ClassName) {
-            $title = _t($this->dataObject->ClassName.'.CMSTITLE', $this->dataObject->ClassName);
-        }
-
-        if ($title === $this->dataObject->ClassName) {
-            $title = _t($this->dataObject->ClassName.'.DefaultTitle', $this->dataObject->ClassName);
-        }
-
-        return $title;
+        return $this->dataObject->i18n_singular_name() . ' (' . ClassInfo::shortName($this->dataObject) . ')';
     }
 
     public function getObjectDescription()
